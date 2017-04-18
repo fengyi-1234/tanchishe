@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title></title>
+<style>
+	body{
+		margin:0;
+		background:#CDD9E4;
+	}
+	#snake{
+		margin:0 auto;
+		width:800px;
+		border:2px solid red;
+	}
+	.info{
+		height:60px;
+		border-bottom: 2px solid red;
+		text-align: center;
+		font:28px/60px arial;
+	}
+	#map{
+		border-bottom: 2px solid red;
+	}
+	#map table{
+		margin:0 auto;
+		border:1px solid#2EAB21;
+	}
+	#map table td{
+		width:22px;
+		height:22px;
+		border:1px solid #00FFFF;
+		background: #fff;
+	}
+	#map table td.snake{
+		background: #3F88EE;
+	}	
+	#map table td.food{
+		background: #2EAB21;
+	}
+	#map table td.block{
+		background: #993300;
+	}#map table td.skate{
+		background: #FF3333;
+	}
+	#map table td.break{
+		background: #FF9900;
+	}
+	
+	
+	.help{
+		height:50px;
+		display: flex;
+		
+	}
+	.left{
+		width:75%;
+		display: flex;
+		border-right:1px solid red;
+		justify-content: space-around;
+		align-items: center;
+	}
+	.right{
+		display: flex;
+		flex:1;
+		align-items: center;
+		justify-content: center;
+	}
+	.left div{
+		height:50px;
+		display: flex;
+		align-items: center;
+	}
+	.left div span{
+		display: block;
+		width:22px;
+		height:22px;		
+		margin-right:5px;
+		background: blue;
+	}
+</style>
+</head>
+<body>
+	<div id="snake">
+		<div class="info">贪吃蛇</div>
+		<div id="map">
+			<!--<table cellpadding="0" cellspacing="0">
+				<!--<tr>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+			</table>				-->
+		</div>
+		<div class="help">
+			<div class="left">
+				<div><span></span>蓝瘦</div>
+				<div><span></span>香菇</div>
+				<div id="startT"><span></span>神器</div>
+				<div><span></span>千万别吃</div>
+			</div>
+			<div class="right">
+				<span>以得<i id="score">0</i>分</span>
+			</div>
+		</div>
+	</div>
+<script>
+(function(){
+	var colors=['#2EAB21','#993300','#FF3333','#FF9900'];
+	var spans=document.querySelectorAll(".left span");
+	spans=[...spans];//把类数组变为真正的数组
+	spans.forEach((item,i)=>{
+		item.style.background=colors[i];
+	});
+	//变量的声明
+	//---------------------------------------------------
+	var score=document.getElementById('score');
+	var startT=document.getElementById('startT');
+	var mapX=20,mapY=20;
+	var snakeData=createArr(mapX,mapY);//所有的td;
+	var mapData=createArr(mapX,mapY);//显示的蛇
+	
+	var snake=[];//[[x1,y1],[x2,y2],[x3,y3]]
+	var len=3;
+	var speed=10;
+	var snakeTimer=null;
+	var skateTimer=[];
+	var breakTimer=[];
+	
+	var direction=39;//上下左右键值
+	var flag=true;
+	//初始化部分
+	//---------------------------------------------------
+	createMap(mapX,mapY);
+	startT.onclick=start;
+	function start(){
+		this.onclick=null;
+		clear();
+		initSnake();		
+		addObj('food');
+		addToy();
+		walk();
+	}
+	
+	
+	
+	//需求函数化部分
+	//--------------------------------------------------
+	//需求一1：生成地图
+	function createMap(x,y){
+		var map=document.getElementById('map');
+		var table=document.createElement('table');
+		table.cellPadding=table.cellSpacing=0;
+		var tbody=table.createTBody();
+		for(var i=0;i<x;i++){//行
+			var tr=document.createElement('tr');
+			for(var j=0;j<y;j++){
+				var td=document.createElement('td');
+				snakeData[i][j]=tr.appendChild(td);					
+			}
+			tbody.appendChild(tr);
+		}
+		table.appendChild(tbody);
+		map.appendChild(table);
+	};
+
+	//需求二：创建二维数组
+	function createArr(x,y){
+		var arr=new Array(x);
+		for(var i=0;i<x;i++){
+			arr[i]=new Array(y);
+		}
+		return arr;
+	};
+	
+	
+	
+	//需求3：设定范围
+	function scope(startX,startY,endX,endY){
+		//开始的行，开始的单元格，结束的行，结束的单元格
+		startX=startX||0;
+		startY=startY||0;
+		endX=endX||mapX-1;
+		endY=endY||mapY-1;
+		var p=[];//存储随机的点
+			x=rP([startX,endX]);
+			y=rP([startY,endY]);			
+		p.push(x,y);
+		if(mapData[x][y]){
+			return scope(startX,startY,endX,endY);
+		}
+		return p;
+	};
+	
+	
+	//需求4：编写随机函数
+	function rP(arr){
+		var min=Math.min.apply(null,arr);
+		var max=Math.max.apply(null,arr);			
+		return Math.round(Math.random()*(max-min)+min);
+	};
+	
+	
+	//需求5：初始化蛇
+	function initSnake(){
+		var p=scope(0,2,mapX-1,parseInt(mapY/2));
+		for(var i=0;i<len;i++){
+			var x=p[0],
+				y=p[1]-i;
+			snake.push([x,y]);
+			snakeData[x][y].className='snake';
+			mapData[x][y]='snake';
+		}
+		
+	};
+	//需求六：让蛇走起来
+	function walk(){
+		clearInterval(snakeTimer);
+		snakeTimer=setInterval(step,5000/speed);		
+	};
+	//需求七：控制蛇的运动
+	function step(){
+		var headX=snake[0][0];
+		var headY=snake[0][1];//蛇头的坐标
+		switch(direction){
+			case 37:
+				headY-=1;
+			break;
+			case 38:
+				headX-=1;
+			break;
+			case 39:
+				headY+=1;
+			break;
+			case 40:
+				headX+=1;		
+		}
+		
+		
+		if(headX<0||headX>mapX-1||headY<0||headY>mapY-1||mapData[headX][headY]=='snake'||mapData[headX][headY]=='block'){
+		clearInterval(snakeTimer);
+		skateTimer.forEach((item,i)=>{
+			clearTimeout(item);
+		})
+		breakTimer.forEach((item,i)=>{
+			clearTimeout(item);
+		})
+		startT.onclick=start;
+		alert('你死了');
+			return;
+		}
+		if(len%4==0 && len<55 && mapData[headX][headY]=='food'){
+			speed+=5;
+			walk();
+		}
+		if(len%9==0 && len<60 && mapData[headX][headY]=='food'){
+			addObj('block');
+		}
+		if(mapData[headX][headY]=='skate'){
+			speed+=15;
+			walk();
+		}
+		if(mapData[headX][headY]=='break'){
+			speed=10;
+			walk();
+		}
+		if(mapData[headX][headY]=='food'){
+			addObj('food');
+			
+			mapData[headX][headY]=true;
+		}
+		if(!mapData[headX][headY]){
+			var lastX=snake[snake.length-1][0];
+			var lastY=snake[snake.length-1][1];
+			//找到蛇的最后一个
+			snakeData[lastX][lastY].className='';
+			snake.pop();
+			mapData[lastX][lastY]=false;
+		}
+		snake.unshift([headX,headY]);
+		snakeData[headX][headY].className='snake';
+		mapData[headX][headY]='snake';
+		len=snake.length;
+		score.innerHTML=(len-3)*10;
+		flag=true;
+	};
+	document.onkeydown=function(e){
+		var e=e||window.event;//兼容
+		if(!flag){
+			return;
+		}
+		if(e.keyCode>36&&e.keyCode<41&&Math.abs(e.keyCode-direction)!=2){
+			direction=e.keyCode;
+		}
+		flag=false;
+		console.log(direction);
+		return false;
+		
+	};
+	
+	
+	//需求9：添加随机的物品
+	function addObj(name){
+		var p=scope();
+		snakeData[p[0]][p[1]].className=name;
+		mapData[p[0]][p[1]]=name;
+	}
+	
+	//需求10:添加随机数量的滑板和刹车
+	function addToy(){
+		var skateNum=rP([6,10]);
+		var breakNum=rP([4,6]);
+		
+		for(var i=0;i<skateNum;i++){
+			skateTimer.push(setTimeout(function(){
+				addObj('skate');
+			},rP([10000,120000])))
+		}
+		
+		for(var i=0;i<breakNum;i++){
+			breakTimer.push(setTimeout(function(){
+				addObj('break');
+			},rP([10000,160000])))
+		}
+	};
+	function clear(){
+		snakeData.forEach((item,i)=>{
+			item.forEach((item,i)=>{
+				item.className='';
+			});
+		});
+		mapData=createArr(mapX,mapY);
+		direction=39;
+		snake=[];
+		len=3;
+		speed=10;
+		score.innerHTML=0;
+	}
+})();
+
+</script>
+</body>
+</html>
